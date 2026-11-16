@@ -1,6 +1,6 @@
 {
-  "name": "시스템 계산기",
-  "short_name": "시스템 계산기",
+  "name": "SSC - Sound System Calculator",
+  "short_name": "SSC",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
