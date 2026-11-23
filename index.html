@@ -39,8 +39,9 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 header{padding-block:28px 12px}
 h1{font-size:26px;font-weight:600;margin:0 0 4px;letter-spacing:-.01em}
 .sub{color:var(--muted);margin:0}
-nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:10px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
-nav a{flex:none;font-size:13px;padding:6px 12px;border:1px solid var(--line);border-radius:999px;color:var(--fg);text-decoration:none;background:var(--surface)}
+nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:10px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+nav a{font-size:13px;padding:7px 4px;text-align:center;white-space:nowrap;border:1px solid var(--line);border-radius:999px;color:var(--fg);text-decoration:none;background:var(--surface)}
+nav a[aria-current="page"]{background:var(--accent);border-color:var(--accent);color:var(--surface);font-weight:600}
 nav a:hover,nav a:focus-visible{border-color:var(--accent);color:var(--accent);outline:none}
 main{display:flex;flex-direction:column;gap:14px;margin-top:6px}
 section{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;scroll-margin-top:64px;min-width:0}
@@ -76,7 +77,14 @@ h3{font-size:14px;font-weight:600;margin:16px 0 10px;padding-top:14px;border-top
 .stp button{flex:none;width:40px;font:inherit;font-size:18px;line-height:1;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:8px;cursor:pointer;touch-action:manipulation}
 .stp button:active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
 .stp button:focus-visible{outline:2px solid var(--accent);outline-offset:-1px}
-@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+section:not(.on){display:none}
+.tbl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.tbl p{font-size:12px;color:var(--muted);margin:0 0 4px;font-weight:600}
+table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:14px;font-variant-numeric:tabular-nums}
+th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:right}
+th{font-family:var(--sans);font-size:12px;font-weight:500;color:var(--muted)}
+td:first-child,th:first-child{text-align:left}
+tr.k td{background:var(--accent-soft);color:var(--accent);font-weight:600}
 </style>
 </head>
 <body>
@@ -124,6 +132,28 @@ h3{font-size:14px;font-weight:600;margin:16px 0 10px;padding-top:14px;border-top
     <div class="r key"><span>V 기준 배수</span><b id="db_rv">–</b></div>
   </div>
   <p class="note"><span>½배 같은 감소는 0.5를 넣으면 마이너스로 나와요.</span></p>
+
+  <h3>전력 쪼개서 계산하기 (1W 기준)</h3>
+  <p class="hint"><span>전력을 "10의 단위 × 작은 수"로 쪼개요.</span><span>10의 단위는 큰 표, 작은 수는 작은 표에서 dB를 찾아 더하면 돼요.</span></p>
+  <div class="in">
+    <label>전력 (W)<input id="db_bw" type="number" step="any" value="500"></label>
+  </div>
+  <div class="f">
+    <div id="db_b1">–</div>
+    <div id="db_b2">–</div>
+  </div>
+  <div class="out">
+    <div class="r key"><span>표로 계산한 값</span><b id="db_bt">–</b></div>
+    <div class="r"><span>정확한 값</span><b id="db_be">–</b></div>
+  </div>
+  <p class="note" id="db_bn"></p>
+
+  <h3>전력(W) → dB 환산표 (1W 기준)</h3>
+  <div class="tbl">
+    <div><p>작은 전력</p><table><thead><tr><th>W</th><th>dB</th></tr></thead><tbody id="db_ts"></tbody></table></div>
+    <div><p>큰 전력</p><table><thead><tr><th>W</th><th>dB</th></tr></thead><tbody id="db_tl"></tbody></table></div>
+  </div>
+  <p class="note"><span>표는 외우기 쉽게 반올림한 값이에요.</span><span>예를 들어 1.25W는 실제 0.97dB예요.</span></p>
 </section>
 
 <section id="dist">
@@ -357,6 +387,24 @@ function sg(x,d=1){return ok(x)?(x>0?'+':'')+f(x,d):'–'}
 function st(id,cls,txt){const e=$(id);e.className='st '+cls;e.textContent=txt;e.hidden=!txt}
 const log=Math.log10;
 
+const SM=[[1.0,0],[1.25,1],[1.6,2],[2.0,3],[2.5,4],[3.15,5],[4.0,6],[5.0,7],[6.3,8],[8.0,9],[10.0,10]];
+const LG=[[1,0],[10,10],[100,20],[200,23],[400,26],[800,29],[1000,30],[2000,33],[4000,36],[8000,39],[10000,40],[20000,43]];
+$('db_ts').innerHTML=SM.map(([w,d])=>`<tr class="${w===2||w===10?'k':''}"><td>${w===1.25||w===3.15?w.toFixed(2):w.toFixed(1)}</td><td>${d}</td></tr>`).join('');
+$('db_tl').innerHTML=LG.map(([w,d])=>`<tr class="${[10,100,1000,10000].includes(w)?'k':''}"><td>${w.toLocaleString('ko-KR')}</td><td>${d}</td></tr>`).join('');
+function dbBook(){
+  const w=n('db_bw');
+  if(!(w>0)){['db_b1','db_b2','db_bt','db_be'].forEach(i=>$(i).textContent='–');$('db_bn').textContent='';return}
+  let e=Math.floor(log(w)),m=w/10**e,b=SM[0];
+  SM.forEach(x=>{if(Math.abs(log(x[0])-log(m))<Math.abs(log(b[0])-log(m)))b=x});
+  if(b[0]===10){e+=1;b=SM[0]}
+  const big=10**e,bd=10*e,tot=bd+b[1];
+  $('db_b1').textContent=f(w,2)+' W ≈ '+(big>=1?big.toLocaleString('ko-KR'):f(big,3))+' × '+b[0];
+  $('db_b2').textContent='→ '+bd+' dB + '+b[1]+' dB = '+tot+' dB';
+  $('db_bt').textContent=sg(tot,0)+' dB';
+  $('db_be').textContent=sg(10*log(w),2)+' dB';
+  $('db_bn').innerHTML=Math.abs(m-b[0])/b[0]>0.03?`<span>작은 수 ${f(m,2)}는 표에 없어서 가장 가까운 ${b[0]}로 맞췄어요.</span>`:'';
+}
+
 function calc(){
   /* dB */
   let r=n('db_r'); $('db_w').textContent=r>0?sg(10*log(r))+' dB':'–'; $('db_v').textContent=r>0?sg(20*log(r))+' dB':'–';
@@ -438,8 +486,23 @@ document.querySelectorAll('input[type=number]').forEach(inp=>{
       const mn=inp.id in MIN?MIN[inp.id]:0;let v=Math.round((cur+dir*s)*1000)/1000;if(v<mn)v=mn;inp.value=v;calc()});return b};
   w.append(mk('−',-1,'줄이기'),inp,mk('+',1,'늘리기'));
 });
-document.querySelectorAll('input,select').forEach(e=>e.addEventListener('input',calc));
-calc();
+document.querySelectorAll('input,select').forEach(e=>e.addEventListener('input',()=>{calc();dbBook()}));
+calc();dbBook();
+
+/* 탭: 한 번에 한 카테고리만 */
+const TABS=[...document.querySelectorAll('main > section')].map(x=>x.id);
+function show(id,save){
+  if(!TABS.includes(id))id=TABS[0];
+  document.querySelectorAll('main > section').forEach(x=>x.classList.toggle('on',x.id===id));
+  document.querySelectorAll('nav a').forEach(a=>{if(a.getAttribute('href')==='#'+id)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});
+  if(save){try{localStorage.setItem('ssc-tab',id)}catch(e){}}
+  if(location.hash!=='#'+id)history.replaceState(null,'','#'+id);
+}
+document.querySelectorAll('nav a').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();show(a.getAttribute('href').slice(1),true);window.scrollTo(0,0)}));
+addEventListener('hashchange',()=>show(location.hash.slice(1),true));
+let first=location.hash.slice(1);
+if(!TABS.includes(first)){try{first=localStorage.getItem('ssc-tab')||''}catch(e){first=''}}
+show(first,false);
 </script>
 
 <script>
